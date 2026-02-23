@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Name Manager</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>File Name Manager</h1>
+      <p>Upload a folder to automatically group and analyze file names.</p>
+    </header>
+
+    <main>
+      <label for="folder-upload" class="upload-area">
+        <div class="upload-area-content">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/><path d="M16 22V12"/><path d="M12 16l4-4 4 4"/><path d="M16 2h5v5"/><path d="M17 7 7 17"/></svg>
+          <span style="font-weight: 600;">Click to upload a folder</span>
+          <span style="font-size: 0.875rem;">or drag and drop</span>
+        </div>
+        <input id="folder-upload" type="file" webkitdirectory="true" directory="true" multiple />
+      </label>
+
+      <div id="results-container"></div>
+    </main>
+  </div>
+
+  <!-- CDN for string-similarity library -->
+  <script src="https://cdn.jsdelivr.net/npm/string-similarity/build/string-similarity.min.js"></script>
+  <script src="script.js" defer></script>
+
+</body>
+</html>
+
