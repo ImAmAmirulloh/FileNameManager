@@ -172,6 +172,26 @@
         }
 
         function diceCoefficient(s1, s2) {
+    // Pecah kalimat menjadi kata-kata (token)
+    let words1 = s1.toLowerCase().split(/\s+/);
+    let words2 = s2.toLowerCase().split(/\s+/);
+    
+    let matches = 0;
+    let tempWords2 = [...words2];
+
+    words1.forEach(word => {
+        let index = tempWords2.indexOf(word);
+        if (index !== -1) {
+            matches++;
+            tempWords2.splice(index, 1); // Hapus agar tidak dihitung dua kali
+        }
+    });
+
+    // Menghitung kemiripan berdasarkan jumlah kata yang sama
+    return (2.0 * matches) / (words1.length + words2.length);
+}
+/*
+        function diceCoefficient(s1, s2) {
             if(s1 === s2) return 1;
             if(s1.length < 2 || s2.length < 2) return 0;
             let bg1 = getBigrams(s1), bg2 = getBigrams(s2), matches = 0, map1 = {};
@@ -179,7 +199,7 @@
             bg2.forEach(b => { if(map1[b] > 0) { matches++; map1[b]--; } });
             return (2.0 * matches) / (bg1.length + bg2.length);
         }
-
+*/
         // 4. Cari Longest Common Prefix (Menentukan Judul Grup)
         function getLCP(strings) {
             if(strings.length === 0) return "";
