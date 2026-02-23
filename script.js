@@ -2,71 +2,26 @@ document.addEventListener('DOMContentLoaded', () => {
   const folderUpload = document.getElementById('folder-upload');
   const resultsContainer = document.getElementById('results-container');
 
-  // Check if stringSimilarity is loaded
-  if (typeof stringSimilarity === 'undefined') {
-    console.error('string-similarity library not loaded. Please check the CDN link.');
-    return;
-  }
-
-  const normalize = (name) => {
-    return name
-      .replace(/\.[^/.]+$/, '') // remove extension
-      .replace(/[\d_\-]+/g, ' ') // replace numbers, underscores, hyphens with space
-      .replace(/\s+/g, ' ') // collapse multiple spaces
-      .trim()
-      .toLowerCase();
-  };
-
-  const groupFiles = (files) => {
-    const groups = new Map();
-    if (files.length === 0) return groups;
-
-    for (const file of files) {
-      const normalizedName = normalize(file.name);
-      if (groups.size === 0) {
-        groups.set(file.name, [file]);
-        continue;
-      }
-
-      const groupKeys = Array.from(groups.keys());
-      const normalizedGroupKeys = groupKeys.map(normalize);
-
-      const { bestMatch, bestMatchIndex } = stringSimilarity.findBestMatch(normalizedName, normalizedGroupKeys);
-
-      if (bestMatch.rating > 0.6) {
-        const bestGroupKey = groupKeys[bestMatchIndex];
-        groups.get(bestGroupKey).push(file);
-      } else {
-        groups.set(file.name, [file]);
-      }
-    }
-    return groups;
-  };
-
-  const renderResults = (files, groupedFiles) => {
+  const renderResults = (files, groupedFiles, authenticityScores) => {
     resultsContainer.innerHTML = ''; // Clear previous results
 
     if (files.length === 0) return;
+
+    const groupCount = Object.keys(groupedFiles).length;
 
     // Info header
     const infoDiv = document.createElement('div');
     infoDiv.className = 'results-info';
     infoDiv.innerHTML = `
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-      <p><b>${files.length} files</b> loaded successfully. Found <b>${groupedFiles.size}</b> potential groups.</p>
+      <p><b>${files.length} files</b> loaded successfully. Found <b>${groupCount}</b> potential groups.</p>
     `;
     resultsContainer.appendChild(infoDiv);
 
     // Render groups
-    for (const [groupName, filesInGroup] of groupedFiles.entries()) {
-      let authenticity = 100;
-      if (filesInGroup.length > 1) {
-        const ratings = filesInGroup.map(file => 
-          stringSimilarity.compareTwoStrings(normalize(groupName), normalize(file.name))
-        );
-        const averageRating = ratings.reduce((a, b) => a + b, 0) / ratings.length;
-        authenticity = Math.round(averageRating * 100);
-      }
+    for (const groupName in groupedFiles) {
+      const filesInGroup = groupedFiles[groupName];
+      const authenticity = authenticityScores[groupName] || 100;
 
       const groupEl = document.createElement('div');
       groupEl.className = 'file-group';
@@ -130,15 +85,33 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.appendChild(modal);
   };
 
-  folderUpload.addEventListener('change', (event) => {
+  folderUpload.addEventListener('change', async (event) => {
     if (event.target.files) {
       const fileList = Array.from(event.target.files).map(file => ({
         name: file.name,
         path: file.webkitRelativePath || file.name,
         type: file.type,
       }));
-      const grouped = groupFiles(fileList);
-      renderResults(fileList, grouped);
+
+      try {
+        const response = await fetch('/api/process-files', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ files: fileList }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Server responded with an error');
+        }
+
+        const { groupedFiles, authenticityScores } = await response.json();
+        renderResults(fileList, groupedFiles, authenticityScores);
+      } catch (error) {
+        console.error('Error processing files:', error);
+        resultsContainer.innerHTML = '<p style="color: red;">Could not process files. Please check the console for more details.</p>';
+      }
     }
   });
 
@@ -147,6 +120,36 @@ document.addEventListener('DOMContentLoaded', () => {
     if (button) {
       const { name, path, type } = button.dataset;
       showModal({ name, path, type });
+    }
+  });
+
+  const pathForm = document.getElementById('path-form');
+  const pathInput = document.getElementById('path-input');
+
+  pathForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const dirPath = pathInput.value.trim();
+    if (!dirPath) return;
+
+    try {
+      const response = await fetch('/api/process-path', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ dirPath }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'Server responded with an error');
+      }
+
+      const { files, groupedFiles, authenticityScores } = await response.json();
+      renderResults(files, groupedFiles, authenticityScores);
+    } catch (error) {
+      console.error('Error processing path:', error);
+      resultsContainer.innerHTML = `<p style="color: red;">${error.message}</p>`;
     }
   });
 });
