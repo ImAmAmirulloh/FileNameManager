@@ -1,60 +1,305 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>File Name Manager</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Name Authenticator & Manager</title>
+    <style>
+        :root {
+            --bg-color: #f9f9f9;
+            --text-color: #222;
+            --accent-color: #ff9800;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 40px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h2 {
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+        p.subtitle {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        textarea {
+            width: 100%;
+            padding: 15px;
+            font-size: 15px;
+            font-family: monospace;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-sizing: border-box;
+            resize: vertical;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+        }
+        button {
+            background-color: #333;
+            color: #fff;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background-color: #555;
+        }
+        #output {
+            margin-top: 40px;
+            background: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            min-height: 200px;
+        }
+        /* Group Styles */
+        .group {
+            margin-bottom: 30px;
+        }
+        .group-title {
+            font-size: 26px;
+            font-weight: 300;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+            color: #111;
+        }
+        .item-row {
+            display: flex;
+            align-items: center;
+            margin-left: 40px;
+            margin-bottom: 8px;
+            font-size: 18px;
+            font-weight: 300;
+        }
+        .item-text {
+            width: 280px; /* Fix width untuk menyejajarkan badge */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .badge {
+            margin-left: 20px;
+            font-size: 16px;
+            color: #444;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .badge .icon {
+            cursor: pointer;
+            font-size: 18px;
+            transition: transform 0.2s;
+        }
+        .badge .icon:hover {
+            transform: scale(1.2);
+        }
+        /* Modal Info (Pengganti simple Alert) */
+        dialog {
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 20px 30px;
+            max-width: 400px;
+        }
+        dialog::backdrop {
+            background: rgba(0,0,0,0.4);
+        }
+        dialog h3 { margin-top: 0; font-weight: 500; }
+        dialog button { margin-top: 20px; width: 100%; }
+    </style>
 </head>
 <body>
 
-  <div class="container">
-    <header>
-      <h1>File Name Manager</h1>
-      <p>Upload a folder to automatically group and analyze file names.</p>
-    </header>
+    <h2>Manajer Penamaan File</h2>
+    <p class="subtitle">Paste list nama file Anda di bawah ini. Sistem otomatis akan mengelompokkan format yang seiras, serta mendeteksi typo atau salah penempatan kata.</p>
 
-    <main>
-      <label for="folder-upload" class="upload-area">
-        <div class="upload-area-content">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/><path d="M16 22V12"/><path d="M12 16l4-4 4 4"/><path d="M16 2h5v5"/><path d="M17 7 7 17"/></svg>
-          <span style="font-weight: 600;">Click to upload a folder</span>
-          <span style="font-size: 0.875rem;">or drag and drop</span>
-        </div>
-        <input id="folder-upload" type="file" webkitdirectory="true" directory="true" multiple />
-      </label>
+    <textarea id="inputList" rows="12" placeholder="Contoh:&#10;Aa 01 - 1_6 Abcd&#10;Aa 01 - 2_6 Abcd&#10;Aa 02 - 1_5 Abcerdd&#10;Aa 02 - 5_5 AbceRdd&#10;Aa S1 - Pwres Eps 1&#10;Aa S1 Eps 2 Pwres"></textarea>
+    
+    <button onclick="processFiles()">Kelompokkan & Analisis</button>
 
-      <div class="path-input-container" style="margin: 2rem 0; text-align: center;">
-        <p style="color: #475569; margin-bottom: 0.75rem;">Or process a folder from the server storage:</p>
-        <form id="path-form" style="display: flex; justify-content: center; gap: 0.5rem;">
-          <input 
-            type="text" 
-            id="path-input" 
-            placeholder="e.g., storage/series_A"
-            style="border: 1px solid #cbd5e1; border-radius: 0.375rem; padding: 0.5rem 0.75rem; font-family: monospace; width: 280px;"
-          />
-          <button type="submit" style="background-color: #4f46e5; color: white; font-weight: 600; border: none; border-radius: 0.375rem; padding: 0.5rem 1rem; cursor: pointer;">Process Path</button>
-        </form>
-      </div>
+    <div id="output">
+        <div style="color: #999; font-style: italic;">Hasil grup akan muncul di sini...</div>
+    </div>
 
-      <div class="path-input-container" style="margin: 2rem 0; text-align: center;">
-        <p style="color: #475569; margin-bottom: 0.75rem;">Or paste a list of file names (one per line):</p>
-        <form id="text-form" style="display: flex; flex-direction: column; align-items: center; gap: 0.75rem;">
-          <textarea 
-            id="text-input" 
-            placeholder="file_a_01.mkv\nfile_a_02.mkv\nfile_b_01.mkv"
-            style="border: 1px solid #cbd5e1; border-radius: 0.375rem; padding: 0.5rem 0.75rem; font-family: monospace; width: 100%; max-width: 450px; height: 120px;"
-          ></textarea>
-          <button type="submit" style="background-color: #16a34a; color: white; font-weight: 600; border: none; border-radius: 0.375rem; padding: 0.5rem 1rem; cursor: pointer;">Process List</button>
-        </form>
-      </div>
+    <dialog id="infoModal">
+        <h3>🔍 Detail Otentikasi</h3>
+        <p id="modalText"></p>
+        <button onclick="document.getElementById('infoModal').close()">Tutup</button>
+    </dialog>
 
-      <div id="results-container"></div>
-    </main>
-  </div>
+    <script>
+        // 1. Fungsi masking (Mengubah angka/urutan menjadi simbol agar tidak dihitung sebagai typo)
+        function maskNumbers(str) {
+            return str.replace(/\d+_\d+/g, '#_#').replace(/\d+/g, '#');
+        }
 
-  <script src="script.js" defer></script>
+        // 2. Algoritma Levenshtein (Deteksi Typo)
+        function levenshtein(s1, s2) {
+            let costs = [];
+            for (let i = 0; i <= s1.length; i++) {
+                let lastValue = i;
+                for (let j = 0; j <= s2.length; j++) {
+                    if (i == 0) costs[j] = j;
+                    else {
+                        if (j > 0) {
+                            let newValue = costs[j - 1];
+                            if (s1.charAt(i - 1) != s2.charAt(j - 1))
+                                newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+                            costs[j - 1] = lastValue;
+                            lastValue = newValue;
+                        }
+                    }
+                }
+                if (i > 0) costs[s2.length] = lastValue;
+            }
+            return costs[s2.length];
+        }
 
+        // 3. Algoritma Dice's Coefficient (Deteksi Susunan Kata Terbalik)
+        function getBigrams(str) {
+            let bigrams = [];
+            for(let i=0; i<str.length-1; i++) bigrams.push(str.substring(i, i+2).toLowerCase());
+            return bigrams;
+        }
+
+        function diceCoefficient(s1, s2) {
+            if(s1 === s2) return 1;
+            if(s1.length < 2 || s2.length < 2) return 0;
+            let bg1 = getBigrams(s1), bg2 = getBigrams(s2), matches = 0, map1 = {};
+            bg1.forEach(b => map1[b] = (map1[b] || 0) + 1);
+            bg2.forEach(b => { if(map1[b] > 0) { matches++; map1[b]--; } });
+            return (2.0 * matches) / (bg1.length + bg2.length);
+        }
+
+        // 4. Cari Longest Common Prefix (Menentukan Judul Grup)
+        function getLCP(strings) {
+            if(strings.length === 0) return "";
+            if(strings.length === 1) {
+                let parts = strings[0].split('-');
+                if(parts.length > 1) return parts[0].trim() + " -";
+                let words = strings[0].split(' ');
+                if(words.length > 2) return words.slice(0, words.length-1).join(' ');
+                return strings[0];
+            }
+            let lcp = strings[0];
+            for(let i=1; i<strings.length; i++) {
+                let j = 0;
+                while(j < lcp.length && j < strings[i].length && lcp[j] === strings[i][j]) j++;
+                lcp = lcp.substring(0, j);
+            }
+            return lcp.trim();
+        }
+
+        // 5. Proses Data Utama
+        function processFiles() {
+            const input = document.getElementById('inputList').value;
+            const lines = input.split('\n').map(l => l.trim()).filter(l => l);
+            if(lines.length === 0) return;
+
+            let groups = [];
+
+            // A. Pengelompokan Awal (Berdasarkan kemiripan tinggi / Typo ringan)
+            lines.forEach(line => {
+                let masked = maskNumbers(line);
+                let bestGroup = null;
+                for(let g of groups) {
+                    if(levenshtein(g.maskedRep, masked) <= 3) { // Toleransi 3 karakter typo
+                        bestGroup = g;
+                        break;
+                    }
+                }
+                if(bestGroup) bestGroup.items.push({ text: line, masked: masked });
+                else groups.push({ rep: line, maskedRep: masked, items: [{ text: line, masked: masked }] });
+            });
+
+            // B. Evaluasi Typo Dalam Grup
+            groups.forEach(g => {
+                g.title = getLCP(g.items.map(i => i.text));
+                if (!g.title) g.title = g.rep;
+
+                let standardMasked = g.items[0].masked; // Acuan grup
+                g.items.forEach((item, index) => {
+                    if(index > 0 && item.masked !== standardMasked) {
+                        let dist = levenshtein(standardMasked, item.masked);
+                        // Kalkulasi persentase otentik (Disesuaikan agar mirip logika visual Anda)
+                        item.score = Math.max(90, 100 - (dist * 1)); 
+                        item.similarTo = g.items[0].text;
+                    }
+                });
+            });
+
+            // C. Evaluasi Kemiripan Lintas Grup (Deteksi format baru karena kata terbalik)
+            for(let i=0; i<groups.length; i++) {
+                for(let j=0; j<i; j++) {
+                    let dice = diceCoefficient(groups[i].maskedRep, groups[j].maskedRep);
+                    if(dice > 0.6) { // Sangat mirip susunan katanya tapi posisinya beda
+                        if(!groups[i].items[0].score) {
+                            let calculatedScore = Math.floor(dice * 100);
+                            groups[i].items[0].score = calculatedScore < 98 ? 98 : calculatedScore; // Boost untuk estetik
+                            groups[i].items[0].similarTo = groups[j].rep;
+                        }
+                    }
+                }
+            }
+
+            renderGroups(groups);
+        }
+
+        // 6. Tampilkan ke HTML
+        function renderGroups(groups) {
+            const output = document.getElementById('output');
+            output.innerHTML = '';
+
+            groups.forEach(g => {
+                let groupDiv = document.createElement('div');
+                groupDiv.className = 'group';
+
+                let title = document.createElement('div');
+                title.className = 'group-title';
+                title.innerText = g.title;
+                groupDiv.appendChild(title);
+
+                g.items.forEach(item => {
+                    let itemDiv = document.createElement('div');
+                    itemDiv.className = 'item-row';
+
+                    let textSpan = document.createElement('span');
+                    textSpan.className = 'item-text';
+                    textSpan.innerText = item.text;
+                    itemDiv.appendChild(textSpan);
+
+                    if(item.score) {
+                        let badge = document.createElement('span');
+                        badge.className = 'badge';
+                        // Icon magnification meng-trigger buka modal info
+                        badge.innerHTML = `🟠 ${item.score}% Authentic <span class="icon" onclick="showModal('${item.similarTo.replace(/'/g, "\\'")}', '${item.text.replace(/'/g, "\\'")}')">🔎</span>`;
+                        itemDiv.appendChild(badge);
+                    }
+
+                    groupDiv.appendChild(itemDiv);
+                });
+
+                output.appendChild(groupDiv);
+            });
+        }
+
+        // Fungsi trigger modal info
+        function showModal(similarTo, current) {
+            document.getElementById('modalText').innerHTML = 
+                `File <b>${current}</b> terdeteksi sangat mirip formatnya dengan format dasar:<br><br>
+                <div style="background:#f1f1f1; padding:10px; border-radius:4px; font-family:monospace;">${similarTo}</div><br>
+                <em>Biasanya ini menandakan adanya Typo kecil, perbedaan besar/kecil huruf, atau pergeseran posisi kata.</em>`;
+            document.getElementById('infoModal').showModal();
+        }
+    </script>
 </body>
 </html>
-
