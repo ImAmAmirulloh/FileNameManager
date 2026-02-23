@@ -45,23 +45,45 @@ function groupFiles($files) {
 }
 
 $results = null;
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['dirPath'])) {
-    $dirPath = $_POST['dirPath'];
-    $fullPath = realpath($dirPath);
+$error = null;
 
-    if ($fullPath && is_dir($fullPath)) {
-        $fileNames = array_diff(scandir($fullPath), ['.', '..']);
-        $fileData = [];
-        foreach ($fileNames as $fileName) {
-            if (is_file($fullPath . '/' . $fileName)) {
-                $fileData[] = [
-                    'name' => $fileName,
-                    'path' => $dirPath . '/' . $fileName,
-                    'type' => mime_content_type($fullPath . '/' . $fileName)
-                ];
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    if (!empty($_POST['dirPath'])) {
+        // --- Process Path Input ---
+        $dirPath = $_POST['dirPath'];
+        $fullPath = realpath($dirPath);
+
+        if ($fullPath && is_dir($fullPath)) {
+            $fileNames = array_diff(scandir($fullPath), ['.', '..']);
+            $fileData = [];
+            foreach ($fileNames as $fileName) {
+                if (is_file($fullPath . '/' . $fileName)) {
+                    $fileData[] = [
+                        'name' => $fileName,
+                        'path' => $dirPath . '/' . $fileName,
+                        'type' => mime_content_type($fullPath . '/' . $fileName)
+                    ];
+                }
             }
+        } else {
+            $error = "Path not found or is not a directory: " . htmlspecialchars($dirPath);
         }
 
+    } elseif (!empty($_POST['textList'])) {
+        // --- Process Textarea Input ---
+        $textList = $_POST['textList'];
+        $fileNames = array_filter(array_map('trim', explode("\n", $textList)));
+        $fileData = [];
+        foreach ($fileNames as $fileName) {
+            $fileData[] = [
+                'name' => $fileName,
+                'path' => 'pasted-list',
+                'type' => 'text'
+            ];
+        }
+    }
+
+    if (!empty($fileData)) {
         $groupedFiles = groupFiles($fileData);
         $authenticityScores = [];
         foreach ($groupedFiles as $groupName => $filesInGroup) {
@@ -82,11 +104,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['dirPath'])) {
             'groupedFiles' => $groupedFiles,
             'authenticityScores' => $authenticityScores
         ];
-
-    } else {
-        $error = "Path not found or is not a directory: " . htmlspecialchars($dirPath);
+    } elseif (!$error) {
+        // Handle case where form submitted but no data found
+        // $error = "No files to process.";
     }
 }
+?>
+
+    
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -156,6 +181,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['dirPath'])) {
             style="border: 1px solid #cbd5e1; border-radius: 0.375rem; padding: 0.5rem 0.75rem; font-family: monospace; width: 280px;"
           />
           <button type="submit" style="background-color: #4f46e5; color: white; font-weight: 600; border: none; border-radius: 0.375rem; padding: 0.5rem 1rem; cursor: pointer;">Process Path</button>
+        </form>
+      </div>
+
+      <div class="path-input-container" style="margin: 2rem 0; text-align: center;">
+        <p style="color: #475569; margin-bottom: 0.75rem;">Or paste a list of file names (one per line):</p>
+        <form id="text-form" method="POST" action="index.php" style="display: flex; flex-direction: column; align-items: center; gap: 0.75rem;">
+          <textarea 
+            id="text-input" 
+            name="textList"
+            placeholder="file_a_01.mkv\nfile_a_02.mkv\nfile_b_01.mkv"
+            style="border: 1px solid #cbd5e1; border-radius: 0.375rem; padding: 0.5rem 0.75rem; font-family: monospace; width: 100%; max-width: 450px; height: 120px;"
+          ><?= htmlspecialchars($_POST['textList'] ?? '') ?></textarea>
+          <button type="submit" style="background-color: #16a34a; color: white; font-weight: 600; border: none; border-radius: 0.375rem; padding: 0.5rem 1rem; cursor: pointer;">Process List</button>
         </form>
       </div>
 

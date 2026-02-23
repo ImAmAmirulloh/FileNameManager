@@ -131,6 +131,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const dirPath = pathInput.value.trim();
     if (!dirPath) return;
 
+    // Clear the other input
+    document.getElementById('text-input').value = '';
+
     try {
       const response = await fetch('/api/process-path', {
         method: 'POST',
@@ -149,6 +152,39 @@ document.addEventListener('DOMContentLoaded', () => {
       renderResults(files, groupedFiles, authenticityScores);
     } catch (error) {
       console.error('Error processing path:', error);
+      resultsContainer.innerHTML = `<p style="color: red;">${error.message}</p>`;
+    }
+  });
+
+  const textForm = document.getElementById('text-form');
+  const textInput = document.getElementById('text-input');
+
+  textForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const text = textInput.value.trim();
+    if (!text) return;
+
+    // Clear the other input
+    document.getElementById('path-input').value = '';
+
+    try {
+      const response = await fetch('/api/process-text', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'Server responded with an error');
+      }
+
+      const { files, groupedFiles, authenticityScores } = await response.json();
+      renderResults(files, groupedFiles, authenticityScores);
+    } catch (error) {
+      console.error('Error processing text:', error);
       resultsContainer.innerHTML = `<p style="color: red;">${error.message}</p>`;
     }
   });

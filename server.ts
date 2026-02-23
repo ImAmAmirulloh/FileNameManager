@@ -95,6 +95,54 @@ app.post('/api/process-path', (req, res) => {
   });
 });
 
+// API endpoint to process a text list of files
+app.post('/api/process-text', (req, res) => {
+  const { text } = req.body;
+  if (!text || typeof text !== 'string') {
+    return res.status(400).json({ error: 'Text content is required.' });
+  }
+
+  const fileNames = text.split('\n').map(name => name.trim()).filter(name => name.length > 0);
+  const fileData = fileNames.map(name => ({ name, path: 'pasted-list', type: 'text' }));
+
+  // --- REUSE EXISTING GROUPING AND AUTHENTICITY LOGIC ---
+  const groups = new Map<string, any[]>();
+  for (const file of fileData) {
+    const normalizedName = normalize(file.name);
+    if (groups.size === 0) {
+      groups.set(file.name, [file]);
+      continue;
+    }
+    const groupKeys = Array.from(groups.keys());
+    const normalizedGroupKeys = groupKeys.map(normalize);
+    const { bestMatch, bestMatchIndex } = findBestMatch(normalizedName, normalizedGroupKeys);
+    if (bestMatch.rating > 0.6) {
+      const bestGroupKey = groupKeys[bestMatchIndex];
+      groups.get(bestGroupKey)?.push(file);
+    } else {
+      groups.set(file.name, [file]);
+    }
+  }
+
+  const authenticityScores = new Map<string, number>();
+  for (const [groupName, filesInGroup] of groups.entries()) {
+    if (filesInGroup.length <= 1) {
+      authenticityScores.set(groupName, 100);
+      continue;
+    }
+    const ratings = filesInGroup.map(file => 
+      compareTwoStrings(normalize(groupName), normalize(file.name))
+    );
+    const averageRating = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+    authenticityScores.set(groupName, Math.round(averageRating * 100));
+  }
+
+  const groupedFilesObj = Object.fromEntries(groups);
+  const authenticityScoresObj = Object.fromEntries(authenticityScores);
+
+  res.json({ files: fileData, groupedFiles: groupedFilesObj, authenticityScores: authenticityScoresObj });
+});
+
 // API endpoint to process uploaded files
 app.post('/api/process-files', (req, res) => {
   const { files } = req.body;
